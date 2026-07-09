@@ -11,6 +11,7 @@ import com.animap.backend.domain.user.dto.SignUpRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -18,15 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public Long signUp(SignUpRequest request) {
         validateDuplicateEmail(request.email());
         validateDuplicateNickname(request.nickname());
 
+        String encodedPassword = passwordEncoder.encode(request.password());
+
         User user = User.createLocalUser(
                 request.email(),
-                request.password(),
+                encodedPassword,
                 request.nickname()
         );
 
