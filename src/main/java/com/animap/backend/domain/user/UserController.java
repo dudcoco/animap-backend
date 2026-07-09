@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.animap.backend.domain.user.dto.LoginRequest;
+import com.animap.backend.domain.user.dto.LoginResponse;
 
 @RestController
 @RequestMapping("/api/users")
@@ -22,5 +24,12 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(SignUpResponse.of(userId));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = userService.login(request);
+
+        return ResponseEntity.ok(response);
     }
 }
