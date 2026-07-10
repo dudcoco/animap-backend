@@ -5,8 +5,9 @@ import com.animap.backend.domain.anime.dto.AnimeSearchResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
+import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
+import com.animap.backend.domain.anime.external.AniListClient;
 
 @Service
 @RequiredArgsConstructor
@@ -14,6 +15,7 @@ import java.util.List;
 public class AnimeService {
 
     private final AnimeRepository animeRepository;
+    private final AniListClient aniListClient;
 
     public List<AnimeSearchResponse> searchAnime(String keyword) {
         return animeRepository
@@ -28,5 +30,9 @@ public class AnimeService {
                 .orElseThrow(() -> new IllegalArgumentException("애니메이션을 찾을 수 없습니다."));
 
         return AnimeDetailResponse.from(anime);
+    }
+
+    public List<ExternalAnimeSearchResponse> searchExternalAnime(String keyword) {
+        return aniListClient.searchAnime(keyword);
     }
 }

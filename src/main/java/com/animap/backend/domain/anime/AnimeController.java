@@ -5,8 +5,8 @@ import com.animap.backend.domain.anime.dto.AnimeSearchResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
 
 @RestController
 @RequestMapping("/api/anime")
@@ -20,6 +20,15 @@ public class AnimeController {
             @RequestParam String keyword
     ) {
         List<AnimeSearchResponse> response = animeService.searchAnime(keyword);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/search/external")
+    public ResponseEntity<List<ExternalAnimeSearchResponse>> searchExternalAnime(
+            @RequestParam String keyword
+    ) {
+        List<ExternalAnimeSearchResponse> response = animeService.searchExternalAnime(keyword);
 
         return ResponseEntity.ok(response);
     }
