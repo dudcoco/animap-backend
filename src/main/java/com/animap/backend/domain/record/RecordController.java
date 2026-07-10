@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import com.animap.backend.domain.record.dto.RecordListResponse;
 import java.util.List;
 import com.animap.backend.domain.record.dto.RecordDetailResponse;
+import com.animap.backend.domain.record.dto.RecordUpdateRequest;
+import com.animap.backend.domain.record.dto.RecordUpdateResponse;
 
 @RestController
 @RequestMapping("/api/records")
@@ -53,6 +55,20 @@ public class RecordController {
         Long userId = (Long) authentication.getPrincipal();
 
         RecordDetailResponse response = recordService.getMyRecordDetail(userId, recordId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // 일부 필드만 바꾸는 수정이므로 PATCH 사용
+    @PatchMapping("/{recordId}")
+    public ResponseEntity<RecordUpdateResponse> updateRecord(
+            Authentication authentication,
+            @PathVariable Long recordId,
+            @Valid @RequestBody RecordUpdateRequest request
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        RecordUpdateResponse response = recordService.updateRecord(userId, recordId, request);
 
         return ResponseEntity.ok(response);
     }

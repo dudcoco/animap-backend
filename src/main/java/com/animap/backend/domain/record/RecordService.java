@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.animap.backend.domain.record.dto.RecordListResponse;
 import java.util.List;
 import com.animap.backend.domain.record.dto.RecordDetailResponse;
+import com.animap.backend.domain.record.dto.RecordUpdateRequest;
+import com.animap.backend.domain.record.dto.RecordUpdateResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +64,24 @@ public class RecordService {
                 .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
 
         return RecordDetailResponse.from(record);
+    }
+
+    @Transactional
+    public RecordUpdateResponse updateRecord(
+            Long userId,
+            Long recordId,
+            RecordUpdateRequest request
+    ) {
+        UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
+
+        record.update(
+                request.rating(),
+                request.preferenceType(),
+                request.reviewText()
+        );
+
+        return RecordUpdateResponse.of(record.getId());
     }
 
     private void validateDuplicateRecord(Long userId, Long animeId) {

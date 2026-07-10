@@ -75,6 +75,24 @@ public class UserAnimeRecord {
         return record;
     }
 
+    public void update(
+            Integer rating,
+            PreferenceType preferenceType,
+            String reviewText
+    ) {
+        if (rating != null) {
+            this.rating = rating;
+        }
+
+        if (preferenceType != null) {
+            this.preferenceType = preferenceType;
+        }
+
+        if (reviewText != null) {
+            this.reviewText = reviewText;
+        }
+    }
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
