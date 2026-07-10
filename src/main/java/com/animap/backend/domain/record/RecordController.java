@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.animap.backend.domain.record.dto.RecordListResponse;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/records")
@@ -29,5 +31,16 @@ public class RecordController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<RecordListResponse>> getMyRecords(
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        List<RecordListResponse> response = recordService.getMyRecords(userId);
+
+        return ResponseEntity.ok(response);
     }
 }

@@ -9,6 +9,8 @@ import com.animap.backend.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.animap.backend.domain.record.dto.RecordListResponse;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +45,14 @@ public class RecordService {
         UserAnimeRecord savedRecord = recordRepository.save(record);
 
         return RecordCreateResponse.of(savedRecord.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecordListResponse> getMyRecords(Long userId) {
+        return recordRepository.findAllByUserId(userId)
+                .stream()
+                .map(RecordListResponse::from)
+                .toList();
     }
 
     private void validateDuplicateRecord(Long userId, Long animeId) {
