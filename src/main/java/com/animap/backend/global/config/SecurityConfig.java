@@ -1,5 +1,6 @@
 package com.animap.backend.global.config;
 
+import com.animap.backend.global.security.JwtAuthenticationEntryPoint;
 import com.animap.backend.global.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -33,6 +35,9 @@ public class SecurityConfig {
                         // STATELESS: JWT방식은 서버가 로그인 세션을 저장하지 않고 클라이언트가 토큰을 들고 다님
                         // 세션을 만들지 않도록 STATELESS로 설정
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
