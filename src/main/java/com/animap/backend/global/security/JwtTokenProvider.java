@@ -1,5 +1,7 @@
 package com.animap.backend.global.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,5 +36,30 @@ public class JwtTokenProvider {
                 .expiration(expiration)
                 .signWith(secretKey)
                 .compact();
+    }
+
+    // 토큰이 정상일 때만 true를 반환
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token);
+
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    // 토큰에서 userID 추출
+    public Long getUserIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return Long.valueOf(claims.getSubject());
     }
 }
