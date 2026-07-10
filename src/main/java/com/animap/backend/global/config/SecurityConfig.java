@@ -39,6 +39,7 @@ public class SecurityConfig {
                                 "/api/users/signup",
                                 "/api/users/login"
                         ).permitAll()
+                        .requestMatchers("/api/users/me").authenticated() // /me는 로그인한 사용자만 가능해야 하기 때문에 authenticated로 막음
                         .anyRequest().permitAll()
                 )
                 // 기본 로그인 필터보다 먼저 JWT 필터를 실행

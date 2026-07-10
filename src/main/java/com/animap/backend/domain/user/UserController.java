@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.animap.backend.domain.user.dto.LoginRequest;
 import com.animap.backend.domain.user.dto.LoginResponse;
+import com.animap.backend.domain.user.dto.UserInfoResponse;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/users")
@@ -29,6 +31,15 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = userService.login(request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserInfoResponse> getMyInfo(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        UserInfoResponse response = userService.getMyInfo(userId);
 
         return ResponseEntity.ok(response);
     }

@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.animap.backend.domain.user.dto.LoginRequest;
 import com.animap.backend.domain.user.dto.LoginResponse;
 import com.animap.backend.global.security.JwtTokenProvider;
+import com.animap.backend.domain.user.dto.UserInfoResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -71,5 +72,13 @@ public class UserService {
         if (userRepository.existsByNickname(nickname)) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public UserInfoResponse getMyInfo(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        return UserInfoResponse.from(user);
     }
 }
