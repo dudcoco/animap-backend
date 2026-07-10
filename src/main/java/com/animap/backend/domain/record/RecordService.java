@@ -14,6 +14,7 @@ import java.util.List;
 import com.animap.backend.domain.record.dto.RecordDetailResponse;
 import com.animap.backend.domain.record.dto.RecordUpdateRequest;
 import com.animap.backend.domain.record.dto.RecordUpdateResponse;
+import com.animap.backend.domain.record.dto.RecordDeleteResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class RecordService {
     private final UserRepository userRepository;
     private final AnimeRepository animeRepository;
 
+    // 생성
     @Transactional
     public RecordCreateResponse createRecord(Long userId, RecordCreateRequest request) {
         // 1. 요청한 사용자가 실제로 존재하는가?
@@ -66,6 +68,7 @@ public class RecordService {
         return RecordDetailResponse.from(record);
     }
 
+    // 수정
     @Transactional
     public RecordUpdateResponse updateRecord(
             Long userId,
@@ -82,6 +85,17 @@ public class RecordService {
         );
 
         return RecordUpdateResponse.of(record.getId());
+    }
+
+    // 삭제
+    @Transactional
+    public RecordDeleteResponse deleteRecord(Long userId, Long recordId) {
+        UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
+
+        recordRepository.delete(record);
+
+        return RecordDeleteResponse.of(recordId);
     }
 
     private void validateDuplicateRecord(Long userId, Long animeId) {

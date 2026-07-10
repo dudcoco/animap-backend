@@ -13,6 +13,7 @@ import java.util.List;
 import com.animap.backend.domain.record.dto.RecordDetailResponse;
 import com.animap.backend.domain.record.dto.RecordUpdateRequest;
 import com.animap.backend.domain.record.dto.RecordUpdateResponse;
+import com.animap.backend.domain.record.dto.RecordDeleteResponse;
 
 @RestController
 @RequestMapping("/api/records")
@@ -69,6 +70,18 @@ public class RecordController {
         Long userId = (Long) authentication.getPrincipal();
 
         RecordUpdateResponse response = recordService.updateRecord(userId, recordId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{recordId}")
+    public ResponseEntity<RecordDeleteResponse> deleteRecord(
+            Authentication authentication,
+            @PathVariable Long recordId
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        RecordDeleteResponse response = recordService.deleteRecord(userId, recordId);
 
         return ResponseEntity.ok(response);
     }
