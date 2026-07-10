@@ -40,11 +40,16 @@ public class SecurityConfig {
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
+                        .requestMatchers( // 애니 검색, 상세 조회는 로그인 안 해도 볼 수 있어야 함
                                 "/api/users/signup",
-                                "/api/users/login"
+                                "/api/users/login",
+                                "/api/anime/search",
+                                "/api/anime/**"
                         ).permitAll()
-                        .requestMatchers("/api/users/me").authenticated() // /me는 로그인한 사용자만 가능해야 하기 때문에 authenticated로 막음
+                        .requestMatchers(
+                                "/api/users/me",
+                                "/api/records/**"
+                        ).authenticated() // 감상 기록은 반드시 로그인한 사용자에게 속해야 함
                         .anyRequest().permitAll()
                 )
                 // 기본 로그인 필터보다 먼저 JWT 필터를 실행
