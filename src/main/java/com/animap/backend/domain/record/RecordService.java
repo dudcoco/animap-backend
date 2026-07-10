@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.animap.backend.domain.record.dto.RecordListResponse;
 import java.util.List;
+import com.animap.backend.domain.record.dto.RecordDetailResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +54,14 @@ public class RecordService {
                 .stream()
                 .map(RecordListResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public RecordDetailResponse getMyRecordDetail(Long userId, Long recordId) {
+        UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
+
+        return RecordDetailResponse.from(record);
     }
 
     private void validateDuplicateRecord(Long userId, Long animeId) {

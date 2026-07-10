@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import com.animap.backend.domain.record.dto.RecordListResponse;
 import java.util.List;
+import com.animap.backend.domain.record.dto.RecordDetailResponse;
 
 @RestController
 @RequestMapping("/api/records")
@@ -40,6 +41,18 @@ public class RecordController {
         Long userId = (Long) authentication.getPrincipal();
 
         List<RecordListResponse> response = recordService.getMyRecords(userId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{recordId}")
+    public ResponseEntity<RecordDetailResponse> getMyRecordDetail(
+            Authentication authentication,
+            @PathVariable Long recordId
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        RecordDetailResponse response = recordService.getMyRecordDetail(userId, recordId);
 
         return ResponseEntity.ok(response);
     }
