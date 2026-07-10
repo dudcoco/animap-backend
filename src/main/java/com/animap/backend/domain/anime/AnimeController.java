@@ -1,0 +1,35 @@
+package com.animap.backend.domain.anime;
+
+import com.animap.backend.domain.anime.dto.AnimeDetailResponse;
+import com.animap.backend.domain.anime.dto.AnimeSearchResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/anime")
+@RequiredArgsConstructor
+public class AnimeController {
+
+    private final AnimeService animeService;
+
+    @GetMapping("/search")
+    public ResponseEntity<List<AnimeSearchResponse>> searchAnime(
+            @RequestParam String keyword
+    ) {
+        List<AnimeSearchResponse> response = animeService.searchAnime(keyword);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{animeId}")
+    public ResponseEntity<AnimeDetailResponse> getAnimeDetail(
+            @PathVariable Long animeId
+    ) {
+        AnimeDetailResponse response = animeService.getAnimeDetail(animeId);
+
+        return ResponseEntity.ok(response);
+    }
+}
