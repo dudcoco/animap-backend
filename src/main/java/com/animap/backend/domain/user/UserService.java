@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.animap.backend.domain.user.dto.LoginRequest;
 import com.animap.backend.domain.user.dto.LoginResponse;
+import com.animap.backend.global.security.JwtTokenProvider;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
     public Long signUp(SignUpRequest request) {
@@ -50,12 +52,13 @@ public class UserService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
-        // request.password(): 비밀번호 원문, user.getPassword(): DB에 저장된 암호화된 비밀번호
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        return LoginResponse.of(user.getId(), user.getNickname());
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getEmail());
+
+        return LoginResponse.of(user.getId(), user.getNickname(), accessToken);
     }
 
     private void validateDuplicateEmail(String email) {
