@@ -48,6 +48,29 @@ public class Anime {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // 외부 API에서 가져온 데이터를 Anime 객체로 만들어야 DB에 저장 가능
+    public static Anime createFromAniList(
+            Integer anilistId,
+            String titleKo,
+            String titleOriginal,
+            String synopsis,
+            String posterUrl,
+            Short releaseYear,
+            BigDecimal averageScore,
+            String status
+    ) {
+        Anime anime = new Anime();
+        anime.anilistId = anilistId;
+        anime.titleKo = titleKo;
+        anime.titleOriginal = titleOriginal;
+        anime.synopsis = synopsis;
+        anime.posterUrl = posterUrl;
+        anime.releaseYear = releaseYear;
+        anime.averageScore = averageScore;
+        anime.status = status;
+        return anime;
+    }
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();

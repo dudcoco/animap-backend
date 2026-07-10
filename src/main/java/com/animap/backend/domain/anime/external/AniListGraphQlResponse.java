@@ -6,7 +6,8 @@ public record AniListGraphQlResponse(
         Data data
 ) {
     public record Data(
-            Page Page
+            Page Page,
+            Media Media
     ) {
     }
 

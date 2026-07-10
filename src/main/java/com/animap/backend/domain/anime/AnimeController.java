@@ -7,6 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
+import com.animap.backend.domain.anime.dto.AnimeImportRequest;
+import com.animap.backend.domain.anime.dto.AnimeImportResponse;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/anime")
@@ -29,6 +32,15 @@ public class AnimeController {
             @RequestParam String keyword
     ) {
         List<ExternalAnimeSearchResponse> response = animeService.searchExternalAnime(keyword);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<AnimeImportResponse> importAnime(
+            @Valid @RequestBody AnimeImportRequest request
+    ) {
+        AnimeImportResponse response = animeService.importAnime(request);
 
         return ResponseEntity.ok(response);
     }

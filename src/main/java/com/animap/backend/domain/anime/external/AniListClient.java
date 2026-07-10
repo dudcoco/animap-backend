@@ -77,4 +77,62 @@ public class AniListClient {
                 }
                 """;
     }
+
+    // anilistId 하나로 작품 상세 정보를 가져오는 메서드
+    public ExternalAnimeSearchResponse getAnimeById(Integer anilistId) {
+        RestClient restClient = restClientBuilder.build();
+
+        AniListGraphQlRequest request = new AniListGraphQlRequest(
+                getAnimeByIdQuery(),
+                Map.of("id", anilistId)
+        );
+
+        AniListGraphQlResponse response = restClient.post()
+                .uri(ANILIST_API_URL)
+                .body(request)
+                .retrieve()
+                .body(AniListGraphQlResponse.class);
+
+        if (response == null
+                || response.data() == null
+                || response.data().Media() == null) {
+            throw new IllegalArgumentException("AniList에서 애니메이션을 찾을 수 없습니다.");
+        }
+
+        AniListGraphQlResponse.Media media = response.data().Media();
+
+        return new ExternalAnimeSearchResponse(
+                media.id(),
+                media.title().nativeTitle(),
+                media.title().english(),
+                media.title().romaji(),
+                media.description(),
+                media.coverImage() != null ? media.coverImage().large() : null,
+                media.seasonYear() != null ? media.seasonYear().shortValue() : null,
+                media.averageScore(),
+                media.status()
+        );
+    }
+
+    private String getAnimeByIdQuery() {
+        return """
+            query ($id: Int) {
+              Media(id: $id, type: ANIME) {
+                id
+                title {
+                  romaji
+                  english
+                  nativeTitle: native
+                }
+                description(asHtml: false)
+                coverImage {
+                  large
+                }
+                seasonYear
+                averageScore
+                status
+              }
+            }
+            """;
+    }
 }

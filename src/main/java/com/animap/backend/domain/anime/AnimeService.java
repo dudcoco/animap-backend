@@ -8,6 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
 import com.animap.backend.domain.anime.external.AniListClient;
+import com.animap.backend.domain.anime.dto.AnimeImportRequest;
+import com.animap.backend.domain.anime.dto.AnimeImportResponse;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -34,5 +37,39 @@ public class AnimeService {
 
     public List<ExternalAnimeSearchResponse> searchExternalAnime(String keyword) {
         return aniListClient.searchAnime(keyword);
+    }
+
+    @Transactional
+    public AnimeImportResponse importAnime(AnimeImportRequest request) {
+        return animeRepository.findByAnilistId(request.anilistId())
+                .map(AnimeImportResponse::alreadyExists)
+                .orElseGet(() -> saveAnimeFromAniList(request.anilistId()));
+    }
+
+    private AnimeImportResponse saveAnimeFromAniList(Integer anilistId) {
+        ExternalAnimeSearchResponse externalAnime = aniListClient.getAnimeById(anilistId);
+
+        BigDecimal averageScore = externalAnime.averageScore() != null
+                ? BigDecimal.valueOf(externalAnime.averageScore())
+                : null;
+
+        String titleOriginal = externalAnime.titleOriginal() != null
+                ? externalAnime.titleOriginal()
+                : externalAnime.titleRomaji();
+
+        Anime anime = Anime.createFromAniList(
+                externalAnime.anilistId(),
+                externalAnime.titleKo(),
+                titleOriginal,
+                externalAnime.synopsis(),
+                externalAnime.posterUrl(),
+                externalAnime.releaseYear(),
+                averageScore,
+                externalAnime.status()
+        );
+
+        Anime savedAnime = animeRepository.save(anime);
+
+        return AnimeImportResponse.saved(savedAnime);
     }
 }
