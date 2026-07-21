@@ -12,7 +12,7 @@ import com.animap.backend.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.animap.backend.domain.preference.dto.PreferenceTagResponse;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -53,6 +53,14 @@ public class PreferenceService {
                 records.size(),
                 updatedPreferenceTagCount
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<PreferenceTagResponse> getMyPreferenceTags(Long userId) {
+        return userPreferenceTagRepository.findAllByUserId(userId)
+                .stream()
+                .map(PreferenceTagResponse::from)
+                .toList();
     }
 
     private BigDecimal calculateScore(PreferenceType preferenceType, Byte weight) {

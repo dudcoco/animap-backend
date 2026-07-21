@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.animap.backend.domain.preference.dto.PreferenceTagResponse;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/preferences")
@@ -20,6 +22,17 @@ public class PreferenceController {
         Long userId = (Long) authentication.getPrincipal();
 
         PreferenceAnalyzeResponse response = preferenceService.analyzeMyPreferences(userId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PreferenceTagResponse>> getMyPreferenceTags(
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        List<PreferenceTagResponse> response = preferenceService.getMyPreferenceTags(userId);
 
         return ResponseEntity.ok(response);
     }
