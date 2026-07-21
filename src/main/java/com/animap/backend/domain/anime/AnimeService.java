@@ -11,6 +11,8 @@ import com.animap.backend.domain.anime.external.AniListClient;
 import com.animap.backend.domain.anime.dto.AnimeImportRequest;
 import com.animap.backend.domain.anime.dto.AnimeImportResponse;
 import java.math.BigDecimal;
+import com.animap.backend.domain.tag.AnimeTagRepository;
+import com.animap.backend.domain.anime.dto.AnimeTagResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,7 @@ public class AnimeService {
 
     private final AnimeRepository animeRepository;
     private final AniListClient aniListClient;
+    private final AnimeTagRepository animeTagRepository;
 
     public List<AnimeSearchResponse> searchAnime(String keyword) {
         return animeRepository
@@ -28,11 +31,17 @@ public class AnimeService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public AnimeDetailResponse getAnimeDetail(Long animeId) {
         Anime anime = animeRepository.findById(animeId)
                 .orElseThrow(() -> new IllegalArgumentException("애니메이션을 찾을 수 없습니다."));
 
-        return AnimeDetailResponse.from(anime);
+        List<AnimeTagResponse> tags = animeTagRepository.findAllByAnime_Id(animeId)
+                .stream()
+                .map(AnimeTagResponse::from)
+                .toList();
+
+        return AnimeDetailResponse.of(anime, tags);
     }
 
     public List<ExternalAnimeSearchResponse> searchExternalAnime(String keyword) {

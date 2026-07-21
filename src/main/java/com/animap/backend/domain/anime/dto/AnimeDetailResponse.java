@@ -3,6 +3,7 @@ package com.animap.backend.domain.anime.dto;
 import com.animap.backend.domain.anime.Anime;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record AnimeDetailResponse(
         Long animeId,
@@ -13,9 +14,13 @@ public record AnimeDetailResponse(
         String posterUrl,
         Short releaseYear,
         BigDecimal averageScore,
-        String status
+        String status,
+        List<AnimeTagResponse> tags
 ) {
-    public static AnimeDetailResponse from(Anime anime) {
+    public static AnimeDetailResponse of(
+            Anime anime,
+            List<AnimeTagResponse> tags
+    ) {
         return new AnimeDetailResponse(
                 anime.getId(),
                 anime.getAnilistId(),
@@ -25,7 +30,8 @@ public record AnimeDetailResponse(
                 anime.getPosterUrl(),
                 anime.getReleaseYear(),
                 anime.getAverageScore(),
-                anime.getStatus()
+                anime.getStatus(),
+                tags
         );
     }
 }
