@@ -49,7 +49,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/users/me",
                                 "/api/records/**",
-                                "/api/preferences/**"
+                                "/api/preferences/**",
+                                "/api/recommendations/**"
                         ).authenticated() // 감상 기록은 반드시 로그인한 사용자에게 속해야 함
                         .anyRequest().permitAll()
                 )

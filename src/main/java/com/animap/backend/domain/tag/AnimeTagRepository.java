@@ -11,4 +11,7 @@ public interface AnimeTagRepository extends JpaRepository<AnimeTag, AnimeTagId> 
 
     // 상세 조회에서 작품 태그를 보여줄 때 사용
     List<AnimeTag> findAllByAnime_Id(Long animeId);
+
+    // 사용자 선호 태그에 맞는 애니를 찾을 때 사용
+    List<AnimeTag> findAllByTag_Id(Long tagId);
 }
