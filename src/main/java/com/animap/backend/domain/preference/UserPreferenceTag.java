@@ -61,6 +61,10 @@ public class UserPreferenceTag {
         this.preferenceScore = preferenceScore;
     }
 
+    public void addScore(BigDecimal scoreToAdd) {
+        this.preferenceScore = this.preferenceScore.add(scoreToAdd);
+    }
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
