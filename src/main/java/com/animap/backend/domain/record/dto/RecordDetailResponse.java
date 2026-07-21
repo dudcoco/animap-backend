@@ -1,10 +1,11 @@
-// 기본 정보 이외의 상세 정보
 package com.animap.backend.domain.record.dto;
 
+import com.animap.backend.domain.anime.dto.AnimeTagResponse;
 import com.animap.backend.domain.record.PreferenceType;
 import com.animap.backend.domain.record.UserAnimeRecord;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record RecordDetailResponse(
         Long recordId,
@@ -17,10 +18,14 @@ public record RecordDetailResponse(
         Integer rating,
         PreferenceType preferenceType,
         String reviewText,
+        List<AnimeTagResponse> tags,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static RecordDetailResponse from(UserAnimeRecord record) {
+    public static RecordDetailResponse of(
+            UserAnimeRecord record,
+            List<AnimeTagResponse> tags
+    ) {
         return new RecordDetailResponse(
                 record.getId(),
                 record.getAnime().getId(),
@@ -32,6 +37,7 @@ public record RecordDetailResponse(
                 record.getRating(),
                 record.getPreferenceType(),
                 record.getReviewText(),
+                tags,
                 record.getCreatedAt(),
                 record.getUpdatedAt()
         );

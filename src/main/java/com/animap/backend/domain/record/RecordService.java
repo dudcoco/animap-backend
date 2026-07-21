@@ -15,6 +15,8 @@ import com.animap.backend.domain.record.dto.RecordDetailResponse;
 import com.animap.backend.domain.record.dto.RecordUpdateRequest;
 import com.animap.backend.domain.record.dto.RecordUpdateResponse;
 import com.animap.backend.domain.record.dto.RecordDeleteResponse;
+import com.animap.backend.domain.anime.dto.AnimeTagResponse;
+import com.animap.backend.domain.tag.AnimeTagRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class RecordService {
     private final UserAnimeRecordRepository recordRepository;
     private final UserRepository userRepository;
     private final AnimeRepository animeRepository;
+    private final AnimeTagRepository animeTagRepository;
 
     // 생성
     @Transactional
@@ -56,7 +59,10 @@ public class RecordService {
     public List<RecordListResponse> getMyRecords(Long userId) {
         return recordRepository.findAllByUserId(userId)
                 .stream()
-                .map(RecordListResponse::from)
+                .map(record -> {
+                    List<AnimeTagResponse> tags = getAnimeTags(record.getAnime().getId());
+                    return RecordListResponse.of(record, tags);
+                })
                 .toList();
     }
 
@@ -65,7 +71,9 @@ public class RecordService {
         UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
 
-        return RecordDetailResponse.from(record);
+        List<AnimeTagResponse> tags = getAnimeTags(record.getAnime().getId());
+
+        return RecordDetailResponse.of(record, tags);
     }
 
     // 수정
@@ -102,5 +110,12 @@ public class RecordService {
         if (recordRepository.existsByUserIdAndAnimeId(userId, animeId)) {
             throw new IllegalArgumentException("이미 등록한 작품입니다.");
         }
+    }
+
+    private List<AnimeTagResponse> getAnimeTags(Long animeId) {
+        return animeTagRepository.findAllByAnime_Id(animeId)
+                .stream()
+                .map(AnimeTagResponse::from)
+                .toList();
     }
 }
