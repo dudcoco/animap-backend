@@ -1,6 +1,7 @@
 package com.animap.backend.domain.preference;
 
 import com.animap.backend.domain.preference.dto.PreferenceAnalyzeResponse;
+import com.animap.backend.domain.preference.dto.PreferenceTagResponse;
 import com.animap.backend.domain.record.PreferenceType;
 import com.animap.backend.domain.record.UserAnimeRecord;
 import com.animap.backend.domain.record.UserAnimeRecordRepository;
@@ -12,10 +13,9 @@ import com.animap.backend.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.animap.backend.domain.preference.dto.PreferenceTagResponse;
+
 import java.math.BigDecimal;
 import java.util.List;
-import com.animap.backend.domain.preference.dto.PreferenceTagResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +32,9 @@ public class PreferenceService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
+        // 현재 감상 기록을 기준으로 다시 분석하기
+        userPreferenceTagRepository.deleteAllByUserId(userId);
+
         List<UserAnimeRecord> records = recordRepository.findAllByUserId(userId);
 
         int updatedPreferenceTagCount = 0;
@@ -42,7 +45,14 @@ public class PreferenceService {
             );
 
             for (AnimeTag animeTag : animeTags) {
-                BigDecimal score = calculateScore(record.getPreferenceType(), animeTag.getWeight());
+                BigDecimal score = calculateScore(
+                        record.getPreferenceType(),
+                        animeTag.getWeight()
+                );
+
+                if (score.compareTo(BigDecimal.ZERO) == 0) {
+                    continue;
+                }
 
                 saveOrUpdatePreferenceTag(user, animeTag.getTag(), score);
 
@@ -67,15 +77,15 @@ public class PreferenceService {
     private BigDecimal calculateScore(PreferenceType preferenceType, Byte weight) {
         BigDecimal score = BigDecimal.valueOf(weight);
 
+        if (preferenceType == PreferenceType.LIKE) {
+            return score;
+        }
+
         if (preferenceType == PreferenceType.DISLIKE) {
             return score.negate();
         }
 
-        if (preferenceType == PreferenceType.NEUTRAL) {
-            return BigDecimal.ZERO;
-        }
-
-        return score;
+        return BigDecimal.ZERO;
     }
 
     private void saveOrUpdatePreferenceTag(

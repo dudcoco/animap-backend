@@ -12,4 +12,7 @@ public interface UserPreferenceTagRepository extends JpaRepository<UserPreferenc
     boolean existsByUserIdAndTagId(Long userId, Long tagId);
 
     List<UserPreferenceTag> findAllByUserId(Long userId);
+
+    // 분석할 때마다 기존 점수에 계속 더해지는 로직을 막음 > 분석 전에 이전 분석결과를 지우고 다시 계산
+    void deleteAllByUserId(Long userId);
 }
