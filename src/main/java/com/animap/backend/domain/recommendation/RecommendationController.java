@@ -1,5 +1,6 @@
 package com.animap.backend.domain.recommendation;
 
+import com.animap.backend.domain.recommendation.dto.RecommendationListResponse;
 import com.animap.backend.domain.recommendation.dto.RecommendationResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +17,16 @@ public class RecommendationController {
     private final RecommendationService recommendationService;
 
     @GetMapping
-    public ResponseEntity<List<RecommendationResponse>> getRecommendations(
+    public ResponseEntity<RecommendationListResponse> getRecommendations(
             Authentication authentication
     ) {
         Long userId = (Long) authentication.getPrincipal();
 
-        List<RecommendationResponse> response = recommendationService.getRecommendations(userId);
+        List<RecommendationResponse> recommendations =
+                recommendationService.getRecommendations(userId);
+
+        RecommendationListResponse response =
+                RecommendationListResponse.of(recommendations);
 
         return ResponseEntity.ok(response);
     }
