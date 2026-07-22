@@ -110,7 +110,7 @@ public class RecommendationService {
                     .multiply(BigDecimal.valueOf(100))
                     .divide(maxScore, 2, RoundingMode.HALF_UP);
 
-            String reason = String.join(", ", tags) + " 태그가 사용자 취향과 일치합니다.";
+            String reason = createReason(tags);
 
             return new RecommendationResponse(
                     anime.getId(),
@@ -123,6 +123,15 @@ public class RecommendationService {
                     tags,
                     reason
             );
+        }
+        private String createReason(List<String> tags) {
+            if (tags.isEmpty()) {
+                return "사용자 취향과 유사한 요소가 있어 추천합니다.";
+            }
+
+            String tagText = String.join(", ", tags);
+
+            return tagText + " 요소가 사용자 취향과 잘 맞아 추천합니다.";
         }
     }
 }
