@@ -44,7 +44,8 @@ public class SecurityConfig {
                                 "/api/users/signup",
                                 "/api/users/login",
                                 "/api/anime/search",
-                                "/api/anime/**"
+                                "/api/anime/**",
+                                "/api/ai/**"
                         ).permitAll()
                         .requestMatchers(
                                 "/api/users/me",
