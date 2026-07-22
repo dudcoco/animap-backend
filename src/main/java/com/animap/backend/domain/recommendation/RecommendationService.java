@@ -1,9 +1,9 @@
 package com.animap.backend.domain.recommendation;
 
 import com.animap.backend.domain.anime.Anime;
-import com.animap.backend.domain.recommendation.dto.RecommendationResponse;
 import com.animap.backend.domain.preference.UserPreferenceTag;
 import com.animap.backend.domain.preference.UserPreferenceTagRepository;
+import com.animap.backend.domain.recommendation.dto.RecommendationResponse;
 import com.animap.backend.domain.record.UserAnimeRecordRepository;
 import com.animap.backend.domain.tag.AnimeTag;
 import com.animap.backend.domain.tag.AnimeTagRepository;
@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @Service
@@ -24,7 +25,8 @@ public class RecommendationService {
     private final UserAnimeRecordRepository recordRepository;
 
     public List<RecommendationResponse> getRecommendations(Long userId) {
-        List<UserPreferenceTag> preferenceTags = userPreferenceTagRepository.findAllByUserId(userId);
+        List<UserPreferenceTag> preferenceTags =
+                userPreferenceTagRepository.findAllByUserId(userId);
 
         Map<Long, RecommendationCandidate> candidateMap = new HashMap<>();
 
@@ -44,6 +46,8 @@ public class RecommendationService {
                     continue;
                 }
 
+                // 실제 추천 로직의 핵심 점수
+                // 이 애니가 사용자 취향 태그와 얼마나 맞는지를 계산한 내부점수
                 BigDecimal score = preferenceTag.getPreferenceScore()
                         .multiply(BigDecimal.valueOf(animeTag.getWeight()));
 
@@ -57,10 +61,19 @@ public class RecommendationService {
             }
         }
 
-        return candidateMap.values()
+        List<RecommendationCandidate> candidates = candidateMap.values()
                 .stream()
                 .sorted(Comparator.comparing(RecommendationCandidate::getScore).reversed())
-                .map(RecommendationCandidate::toResponse)
+                .toList();
+
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+
+        BigDecimal maxScore = candidates.get(0).getScore();
+
+        return candidates.stream()
+                .map(candidate -> candidate.toResponse(maxScore))
                 .toList();
     }
 
@@ -86,8 +99,16 @@ public class RecommendationService {
             return score;
         }
 
-        private RecommendationResponse toResponse() {
+        private RecommendationResponse toResponse(BigDecimal maxScore) {
             List<String> tags = new ArrayList<>(matchedTags);
+
+            // 내부 계산값을 응답에 그대로 보여주는 값
+            BigDecimal rawScore = score.setScale(2, RoundingMode.HALF_UP);
+
+            // 현재 추천 후보 중 최고 점수를 기준으로 환산한 값
+            BigDecimal matchPercent = score
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(maxScore, 2, RoundingMode.HALF_UP);
 
             String reason = String.join(", ", tags) + " 태그가 사용자 취향과 일치합니다.";
 
@@ -97,7 +118,8 @@ public class RecommendationService {
                     anime.getTitleOriginal(),
                     anime.getPosterUrl(),
                     anime.getReleaseYear(),
-                    score,
+                    rawScore,
+                    matchPercent,
                     tags,
                     reason
             );
