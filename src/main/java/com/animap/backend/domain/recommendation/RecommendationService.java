@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +29,16 @@ public class RecommendationService {
     public List<RecommendationResponse> getRecommendations(Long userId) {
         List<UserPreferenceTag> preferenceTags =
                 userPreferenceTagRepository.findAllByUserId(userId);
+
+        // 사용자가 싫어하는 태그 모으기
+        Map<Long, UserPreferenceTag> negativePreferenceTagMap = preferenceTags.stream()
+                .filter(preferenceTag ->
+                        preferenceTag.getPreferenceScore().compareTo(BigDecimal.ZERO) < 0
+                )
+                .collect(Collectors.toMap(
+                        preferenceTag -> preferenceTag.getTag().getId(),
+                        Function.identity()
+                ));
 
         Map<Long, RecommendationCandidate> candidateMap = new HashMap<>();
 
@@ -46,8 +58,6 @@ public class RecommendationService {
                     continue;
                 }
 
-                // 실제 추천 로직의 핵심 점수
-                // 이 애니가 사용자 취향 태그와 얼마나 맞는지를 계산한 내부점수
                 BigDecimal score = preferenceTag.getPreferenceScore()
                         .multiply(BigDecimal.valueOf(animeTag.getWeight()));
 
@@ -58,6 +68,19 @@ public class RecommendationService {
 
                 candidate.addScore(score);
                 candidate.addMatchedTag(preferenceTag.getTag().getName());
+            }
+        }
+
+        for (RecommendationCandidate candidate : candidateMap.values()) {
+            // 추천 후보가 된 애니의 모든 태그를 가져옴
+            List<AnimeTag> candidateAnimeTags =
+                    animeTagRepository.findAllByAnime_Id(candidate.getAnimeId());
+
+            for (AnimeTag animeTag : candidateAnimeTags) {
+                // 싫어하는 태그가 후보 애니에 있으면 cautionTags에 추가
+                if (negativePreferenceTagMap.containsKey(animeTag.getTag().getId())) {
+                    candidate.addCautionTag(animeTag.getTag().getName());
+                }
             }
         }
 
@@ -82,9 +105,14 @@ public class RecommendationService {
         private final Anime anime;
         private BigDecimal score = BigDecimal.ZERO;
         private final Set<String> matchedTags = new LinkedHashSet<>();
+        private final Set<String> cautionTags = new LinkedHashSet<>();
 
         private RecommendationCandidate(Anime anime) {
             this.anime = anime;
+        }
+
+        private Long getAnimeId() {
+            return anime.getId();
         }
 
         private void addScore(BigDecimal scoreToAdd) {
@@ -95,12 +123,17 @@ public class RecommendationService {
             this.matchedTags.add(tagName);
         }
 
+        private void addCautionTag(String tagName) {
+            this.cautionTags.add(tagName);
+        }
+
         private BigDecimal getScore() {
             return score;
         }
 
         private RecommendationResponse toResponse(BigDecimal maxScore) {
-            List<String> tags = new ArrayList<>(matchedTags);
+            List<String> matchedTagList = new ArrayList<>(matchedTags);
+            List<String> cautionTagList = new ArrayList<>(cautionTags);
 
             // 내부 계산값을 응답에 그대로 보여주는 값
             BigDecimal rawScore = score.setScale(2, RoundingMode.HALF_UP);
@@ -110,7 +143,8 @@ public class RecommendationService {
                     .multiply(BigDecimal.valueOf(100))
                     .divide(maxScore, 2, RoundingMode.HALF_UP);
 
-            String reason = createReason(tags);
+            String reason = createReason(matchedTagList);
+            String cautionMessage = createCautionMessage(cautionTagList);
 
             return new RecommendationResponse(
                     anime.getId(),
@@ -120,10 +154,13 @@ public class RecommendationService {
                     anime.getReleaseYear(),
                     rawScore,
                     matchPercent,
-                    tags,
-                    reason
+                    matchedTagList,
+                    cautionTagList,
+                    reason,
+                    cautionMessage
             );
         }
+
         private String createReason(List<String> tags) {
             if (tags.isEmpty()) {
                 return "사용자 취향과 유사한 요소가 있어 추천합니다.";
@@ -132,6 +169,16 @@ public class RecommendationService {
             String tagText = String.join(", ", tags);
 
             return tagText + " 요소가 사용자 취향과 잘 맞아 추천합니다.";
+        }
+
+        private String createCautionMessage(List<String> cautionTags) {
+            if (cautionTags.isEmpty()) {
+                return null;
+            }
+
+            String tagText = String.join(", ", cautionTags);
+
+            return "다만 " + tagText + " 요소는 사용자 취향과 맞지 않을 수 있습니다.";
         }
     }
 }
