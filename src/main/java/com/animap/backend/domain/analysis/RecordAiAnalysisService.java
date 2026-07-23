@@ -1,0 +1,154 @@
+package com.animap.backend.domain.analysis;
+
+import com.animap.backend.domain.ai.OpenAiClient;
+import com.animap.backend.domain.ai.dto.AnalyzedTagResponse;
+import com.animap.backend.domain.ai.dto.ReviewAnalysisResponse;
+import com.animap.backend.domain.analysis.dto.RecordAiAnalysisResponse;
+import com.animap.backend.domain.preference.UserPreferenceTag;
+import com.animap.backend.domain.preference.UserPreferenceTagRepository;
+import com.animap.backend.domain.record.UserAnimeRecord;
+import com.animap.backend.domain.record.UserAnimeRecordRepository;
+import com.animap.backend.domain.tag.Tag;
+import com.animap.backend.domain.tag.TagRepository;
+import com.animap.backend.domain.tag.TagType;
+import com.animap.backend.domain.user.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class RecordAiAnalysisService {
+
+    private final OpenAiClient openAiClient;
+    private final UserAnimeRecordRepository recordRepository;
+    private final TagRepository tagRepository;
+    private final RecordAnalysisTagRepository recordAnalysisTagRepository;
+    private final UserPreferenceTagRepository userPreferenceTagRepository;
+
+    @Transactional
+    public RecordAiAnalysisResponse analyzeRecordAndApply(
+            Long userId,
+            Long recordId
+    ) {
+        // 1. 감상 기록 조회
+        UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
+
+        // 2. ReviewText 확인 > 감상 이유가 비어있으면 AI가 분석할 문장이 없으니 불가
+        validateReviewText(record);
+
+        // 3. 중복 분석 방지
+        if (recordAnalysisTagRepository.existsByRecord_Id(recordId)) {
+            throw new IllegalArgumentException("이미 AI 분석이 완료된 감상 기록입니다.");
+        }
+
+        // 4. AI 분석 실행
+        ReviewAnalysisResponse analysisResult =
+                openAiClient.analyzeReview(record.getReviewText());
+
+        User user = record.getUser();
+
+        // 5. 긍정 태그/부정 태그 나눠서 저장
+        for (AnalyzedTagResponse positiveTag : analysisResult.positiveTags()) {
+            reflectAnalysisResult(
+                    user,
+                    record,
+                    positiveTag,
+                    AnalysisSentiment.POSITIVE
+            );
+        }
+
+        for (AnalyzedTagResponse negativeTag : analysisResult.negativeTags()) {
+            reflectAnalysisResult(
+                    user,
+                    record,
+                    negativeTag,
+                    AnalysisSentiment.NEGATIVE
+            );
+        }
+
+        return RecordAiAnalysisResponse.of(
+                record.getId(),
+                analysisResult.positiveTags().size(),
+                analysisResult.negativeTags().size(),
+                analysisResult.summary()
+        );
+    }
+
+    private void validateReviewText(UserAnimeRecord record) {
+        if (record.getReviewText() == null || record.getReviewText().isBlank()) {
+            throw new IllegalArgumentException("AI 분석을 수행할 감상 이유가 없습니다.");
+        }
+    }
+
+    private void reflectAnalysisResult(
+            User user,
+            UserAnimeRecord record,
+            AnalyzedTagResponse analyzedTag,
+            AnalysisSentiment sentiment
+    ) {
+        TagType category = parseTagType(analyzedTag.category());
+
+        // 6. tags 저장 또는 재사용
+        Tag tag = tagRepository.findByName(analyzedTag.name())
+                .orElseGet(() -> tagRepository.save(
+                        Tag.create(analyzedTag.name(), category)
+                ));
+
+        Byte confidence = convertConfidence(analyzedTag.confidence());
+
+        // 7. record_analysis_tags 저장
+        // 이걸 저장해야 이 감상기록에서 어떤 태그가 AI 분석으로 나왔는지 남길 수 있음
+        RecordAnalysisTag recordAnalysisTag = RecordAnalysisTag.create(
+                record,
+                tag,
+                sentiment,
+                confidence
+        );
+
+        recordAnalysisTagRepository.save(recordAnalysisTag);
+
+        // 8. user_preference_tags 반영: 긍정이면 + 부정이면 -
+        BigDecimal preferenceScore = BigDecimal.valueOf(confidence);
+
+        if (sentiment == AnalysisSentiment.NEGATIVE) {
+            preferenceScore = preferenceScore.negate();
+        }
+
+        saveOrUpdateUserPreferenceTag(user, tag, preferenceScore);
+    }
+
+    private TagType parseTagType(String category) {
+        try {
+            return TagType.valueOf(category);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("지원하지 않는 태그 카테고리입니다: " + category);
+        }
+    }
+
+    private Byte convertConfidence(int confidence) {
+        if (confidence < 1 || confidence > 5) {
+            throw new IllegalArgumentException("confidence는 1부터 5 사이여야 합니다.");
+        }
+
+        return (byte) confidence;
+    }
+
+    private void saveOrUpdateUserPreferenceTag(
+            User user,
+            Tag tag,
+            BigDecimal score
+    ) {
+        userPreferenceTagRepository.findByUserIdAndTagId(user.getId(), tag.getId())
+                .ifPresentOrElse(
+                        preferenceTag -> preferenceTag.addScore(score),
+                        () -> userPreferenceTagRepository.save(
+                                UserPreferenceTag.create(user, tag, score)
+                        )
+                );
+    }
+}
