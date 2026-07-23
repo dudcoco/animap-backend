@@ -45,13 +45,15 @@ public class SecurityConfig {
                                 "/api/users/login",
                                 "/api/anime/search",
                                 "/api/anime/**",
-                                "/api/ai/**"
+                                "/api/ai/**",
+                                "/api/ai/review-analysis"
                         ).permitAll()
                         .requestMatchers(
                                 "/api/users/me",
                                 "/api/records/**",
                                 "/api/preferences/**",
-                                "/api/recommendations/**"
+                                "/api/recommendations/**",
+                                "/api/ai/review-analysis/apply"
                         ).authenticated() // 감상 기록은 반드시 로그인한 사용자에게 속해야 함
                         .anyRequest().permitAll()
                 )
