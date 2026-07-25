@@ -10,4 +10,7 @@ public interface RecordAnalysisTagRepository extends JpaRepository<RecordAnalysi
     boolean existsByRecord_Id(Long recordId);
 
     List<RecordAnalysisTag> findAllByRecord_Id(Long recordId);
+
+    // RecordAnalysisTag의 record의 user의 id가 userId인 것들을 전부 찾아라
+    List<RecordAnalysisTag> findAllByRecord_User_Id(Long userId);
 }
