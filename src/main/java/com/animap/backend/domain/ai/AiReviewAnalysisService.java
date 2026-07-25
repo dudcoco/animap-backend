@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +28,9 @@ public class AiReviewAnalysisService {
     private final UserPreferenceTagRepository userPreferenceTagRepository;
 
     public ReviewAnalysisResponse analyzeReview(String reviewText) {
-        return openAiClient.analyzeReview(reviewText);
+        List<Tag> availableTags = tagRepository.findAll();
+
+        return openAiClient.analyzeReview(reviewText, availableTags);
     }
 
     @Transactional
@@ -38,8 +41,10 @@ public class AiReviewAnalysisService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
+        List<Tag> availableTags = tagRepository.findAll();
+
         ReviewAnalysisResponse analysisResult =
-                openAiClient.analyzeReview(reviewText);
+                openAiClient.analyzeReview(reviewText, availableTags);
 
         for (AnalyzedTagResponse positiveTag : analysisResult.positiveTags()) {
             reflectPreferenceTag(user, positiveTag, true);

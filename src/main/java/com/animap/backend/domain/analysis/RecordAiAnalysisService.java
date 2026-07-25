@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -47,8 +48,10 @@ public class RecordAiAnalysisService {
         }
 
         // 4. AI 분석 실행
+        List<Tag> availableTags = tagRepository.findAll();
+
         ReviewAnalysisResponse analysisResult =
-                openAiClient.analyzeReview(record.getReviewText());
+                openAiClient.analyzeReview(record.getReviewText(), availableTags);
 
         User user = record.getUser();
 
@@ -93,11 +96,13 @@ public class RecordAiAnalysisService {
     ) {
         TagType category = parseTagType(analyzedTag.category());
 
-        // 6. tags 저장 또는 재사용
+        // 6. AI가 목록에 없는 태그를 반환하면 DB에 새로 만들지 X, 그대로 반영하지 X
         Tag tag = tagRepository.findByName(analyzedTag.name())
-                .orElseGet(() -> tagRepository.save(
-                        Tag.create(analyzedTag.name(), category)
-                ));
+                .orElse(null);
+
+        if (tag == null) {
+            return;
+        }
 
         Byte confidence = convertConfidence(analyzedTag.confidence());
 

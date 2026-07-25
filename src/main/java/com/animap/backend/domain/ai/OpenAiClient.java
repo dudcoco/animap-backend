@@ -1,7 +1,7 @@
 package com.animap.backend.domain.ai;
 
-import com.animap.backend.domain.ai.dto.AnalyzedTagResponse;
 import com.animap.backend.domain.ai.dto.ReviewAnalysisResponse;
+import com.animap.backend.domain.tag.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -10,7 +10,6 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OpenAiClient {
 
-    private static final String OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+    private static final String OPENAI_RESPONSES_API_URL = "https://api.openai.com/v1/responses";
 
     private final RestClient.Builder restClientBuilder;
     private final ObjectMapper objectMapper;
@@ -29,16 +28,21 @@ public class OpenAiClient {
     @Value("${openai.model}")
     private String model;
 
-    public ReviewAnalysisResponse analyzeReview(String reviewText) {
+    public ReviewAnalysisResponse analyzeReview(
+            String reviewText,
+            List<Tag> availableTags
+    ) {
         RestClient restClient = restClientBuilder.build();
+
+        String prompt = buildPrompt(reviewText, availableTags);
 
         Map<String, Object> requestBody = Map.of(
                 "model", model,
-                "input", createPrompt(reviewText)
+                "input", prompt
         );
 
         String responseBody = restClient.post()
-                .uri(OPENAI_RESPONSES_URL)
+                .uri(OPENAI_RESPONSES_API_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer " + apiKey)
                 .body(requestBody)
@@ -47,30 +51,37 @@ public class OpenAiClient {
 
         String outputText = extractOutputText(responseBody);
 
-        return parseAnalysisResult(outputText);
+        return parseReviewAnalysisResponse(outputText);
     }
 
-    private String createPrompt(String reviewText) {
+    private String buildPrompt(
+            String reviewText,
+            List<Tag> availableTags
+    ) {
+        String availableTagText = formatAvailableTags(availableTags);
+
         return """
-                너는 애니메이션 감상문에서 사용자의 선호/비선호 요소를 추출하는 분석기다.
+                당신은 애니메이션 감상문을 분석하여 사용자의 선호/비선호 요소를 추출하는 AI입니다.
 
-                아래 감상문을 읽고, 사용자가 좋아한 요소와 싫어한 요소를 태그로 추출해라.
+                아래 [사용 가능한 태그 목록] 중에서만 태그를 선택해야 합니다.
+                절대로 새로운 태그 이름을 만들지 마세요.
+                태그 이름은 반드시 목록에 있는 name 값을 그대로 사용하세요.
+                category 값도 반드시 목록에 있는 category 값을 그대로 사용하세요.
 
-                반드시 아래 JSON 형식으로만 응답해라.
-                설명 문장, 마크다운, 코드블록은 절대 포함하지 마라.
+                예를 들어 목록에 '폭력성 / WARNING'이 있다면,
+                '폭력', '잔혹한 장면', '폭력적인 요소'처럼 바꿔 쓰지 말고 반드시 '폭력성'이라고 출력해야 합니다.
 
-                사용 가능한 category:
-                - GENRE: 장르. 예: 액션, 스포츠, 판타지, 로맨스
-                - MOOD: 분위기. 예: 밝음, 어두움, 잔잔함, 긴장감
-                - THEME: 소재/주제. 예: 성장, 우정, 복수, 가족
-                - WARNING: 주의 요소. 예: 폭력성, 고어, 우울한 전개
-                - ART_STYLE: 그림체/작화. 예: 그림체가 투박함, 작화가 화려함
-                - PACING: 전개 속도. 예: 전개가 느림, 급전개
+                사용자가 좋아한 요소는 positiveTags에 넣고,
+                사용자가 싫어한 요소는 negativeTags에 넣으세요.
 
-                confidence는 1부터 5 사이 숫자로 넣어라.
-                감상문에 직접 드러나지 않은 요소는 추측하지 마라.
+                confidence는 1부터 5 사이의 정수입니다.
+                감상문에서 강하게 드러난 요소일수록 높은 값을 주세요.
 
-                응답 형식:
+                감상문과 관련 있는 태그가 없다면 빈 배열을 반환하세요.
+
+                응답은 반드시 아래 JSON 형식만 반환하세요.
+                설명 문장이나 마크다운 코드블록은 넣지 마세요.
+
                 {
                   "positiveTags": [
                     {
@@ -86,12 +97,36 @@ public class OpenAiClient {
                       "confidence": 4
                     }
                   ],
-                  "summary": "사용자는 성장 요소를 긍정적으로 보고, 폭력적인 장면은 부정적으로 느꼈다."
+                  "summary": "사용자는 캐릭터 성장 요소를 긍정적으로 느꼈고, 폭력적인 장면은 부정적으로 느꼈다."
                 }
 
-                감상문:
+                [사용 가능한 태그 목록]
                 %s
-                """.formatted(reviewText);
+
+                [감상문]
+                %s
+                """.formatted(
+                availableTagText,
+                reviewText
+        );
+    }
+
+    private String formatAvailableTags(List<Tag> availableTags) {
+        if (availableTags == null || availableTags.isEmpty()) {
+            throw new IllegalArgumentException("AI 분석에 사용할 표준 태그 목록이 없습니다.");
+        }
+
+        StringBuilder builder = new StringBuilder();
+
+        for (Tag tag : availableTags) {
+            builder.append("- ")
+                    .append(tag.getName())
+                    .append(" / ")
+                    .append(tag.getCategory().name())
+                    .append("\n");
+        }
+
+        return builder.toString();
     }
 
     private String extractOutputText(String responseBody) {
@@ -126,50 +161,41 @@ public class OpenAiClient {
         }
     }
 
-    private ReviewAnalysisResponse parseAnalysisResult(String outputText) {
+    private ReviewAnalysisResponse parseReviewAnalysisResponse(String outputText) {
         try {
-            JsonNode root = objectMapper.readTree(outputText);
+            String cleanedOutputText = removeMarkdownCodeBlock(outputText);
 
-            List<AnalyzedTagResponse> positiveTags =
-                    parseTags(root.get("positiveTags"));
-
-            List<AnalyzedTagResponse> negativeTags =
-                    parseTags(root.get("negativeTags"));
-
-            String summary = root.get("summary") != null
-                    ? root.get("summary").asText()
-                    : "";
-
-            return new ReviewAnalysisResponse(
-                    positiveTags,
-                    negativeTags,
-                    summary
+            return objectMapper.readValue(
+                    cleanedOutputText,
+                    ReviewAnalysisResponse.class
             );
 
         } catch (Exception e) {
-            throw new IllegalArgumentException("AI 분석 결과를 JSON으로 변환하지 못했습니다.");
+            throw new IllegalArgumentException("AI 분석 결과를 JSON으로 변환하는 중 오류가 발생했습니다.");
         }
     }
 
-    private List<AnalyzedTagResponse> parseTags(JsonNode tagNodes) {
-        List<AnalyzedTagResponse> tags = new ArrayList<>();
-
-        if (tagNodes == null || !tagNodes.isArray()) {
-            return tags;
+    private String removeMarkdownCodeBlock(String text) {
+        if (text == null) {
+            return "";
         }
 
-        for (JsonNode tagNode : tagNodes) {
-            String name = tagNode.get("name").asText();
-            String category = tagNode.get("category").asText();
-            int confidence = tagNode.get("confidence").asInt();
+        String trimmedText = text.trim();
 
-            tags.add(new AnalyzedTagResponse(
-                    name,
-                    category,
-                    confidence
-            ));
+        if (trimmedText.startsWith("```json")) {
+            return trimmedText
+                    .replaceFirst("```json", "")
+                    .replaceFirst("```", "")
+                    .trim();
         }
 
-        return tags;
+        if (trimmedText.startsWith("```")) {
+            return trimmedText
+                    .replaceFirst("```", "")
+                    .replaceFirst("```", "")
+                    .trim();
+        }
+
+        return trimmedText;
     }
 }
