@@ -10,6 +10,7 @@ import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
 import com.animap.backend.domain.anime.dto.AnimeImportRequest;
 import com.animap.backend.domain.anime.dto.AnimeImportResponse;
 import jakarta.validation.Valid;
+import com.animap.backend.domain.anime.dto.ExternalTagListResponse;
 
 @RestController
 @RequestMapping("/api/anime")
@@ -41,6 +42,13 @@ public class AnimeController {
             @Valid @RequestBody AnimeImportRequest request
     ) {
         AnimeImportResponse response = animeService.importAnime(request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/external/tags")
+    public ResponseEntity<ExternalTagListResponse> getExternalTags() {
+        ExternalTagListResponse response = animeService.getExternalTags();
 
         return ResponseEntity.ok(response);
     }

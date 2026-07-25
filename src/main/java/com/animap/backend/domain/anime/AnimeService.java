@@ -13,6 +13,7 @@ import com.animap.backend.domain.anime.dto.AnimeImportResponse;
 import java.math.BigDecimal;
 import com.animap.backend.domain.tag.AnimeTagRepository;
 import com.animap.backend.domain.anime.dto.AnimeTagResponse;
+import com.animap.backend.domain.anime.dto.ExternalTagListResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +54,11 @@ public class AnimeService {
         return animeRepository.findByAnilistId(request.anilistId())
                 .map(AnimeImportResponse::alreadyExists)
                 .orElseGet(() -> saveAnimeFromAniList(request.anilistId()));
+    }
+
+    @Transactional(readOnly = true)
+    public ExternalTagListResponse getExternalTags() {
+        return aniListClient.getExternalTags();
     }
 
     private AnimeImportResponse saveAnimeFromAniList(Integer anilistId) {
