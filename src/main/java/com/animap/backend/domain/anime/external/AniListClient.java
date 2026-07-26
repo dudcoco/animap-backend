@@ -57,7 +57,9 @@ public class AniListClient {
                         media.coverImage() != null ? media.coverImage().large() : null,
                         media.seasonYear() != null ? media.seasonYear().shortValue() : null,
                         media.averageScore(),
-                        media.status()
+                        media.status(),
+                        media.genres() != null ? media.genres() : List.of(),
+                        extractTagNames(media.tags())
                 ))
                 .toList();
     }
@@ -94,7 +96,9 @@ public class AniListClient {
                 media.coverImage() != null ? media.coverImage().large() : null,
                 media.seasonYear() != null ? media.seasonYear().shortValue() : null,
                 media.averageScore(),
-                media.status()
+                media.status(),
+                media.genres() != null ? media.genres() : List.of(),
+                extractTagNames(media.tags())
         );
     }
 
@@ -193,6 +197,14 @@ public class AniListClient {
                       seasonYear
                       averageScore
                       status
+                      genres
+                      tags {
+                        name
+                        rank
+                        isAdult
+                        isGeneralSpoiler
+                        isMediaSpoiler
+                      }
                     }
                   }
                 }
@@ -216,6 +228,14 @@ public class AniListClient {
                     seasonYear
                     averageScore
                     status
+                    genres
+                    tags {
+                      name
+                      rank
+                      isAdult
+                      isGeneralSpoiler
+                      isMediaSpoiler
+                    }
                   }
                 }
                 """;
@@ -266,5 +286,19 @@ public class AniListClient {
         }
 
         return valueNode.asBoolean();
+    }
+
+    private List<String> extractTagNames(List<AniListGraphQlResponse.MediaTag> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return List.of();
+        }
+
+        return tags.stream()
+                .filter(tag -> tag.name() != null && !tag.name().isBlank())
+                .filter(tag -> !Boolean.TRUE.equals(tag.isAdult()))
+                .filter(tag -> !Boolean.TRUE.equals(tag.isGeneralSpoiler()))
+                .filter(tag -> !Boolean.TRUE.equals(tag.isMediaSpoiler()))
+                .map(AniListGraphQlResponse.MediaTag::name)
+                .toList();
     }
 }

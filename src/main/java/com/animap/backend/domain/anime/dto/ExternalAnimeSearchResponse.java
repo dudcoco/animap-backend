@@ -1,14 +1,18 @@
 package com.animap.backend.domain.anime.dto;
 
+import java.util.List;
+
 public record ExternalAnimeSearchResponse(
         Integer anilistId,
         String titleKo,
-        String titleOriginal,
+        String titleEnglish,
         String titleRomaji,
         String synopsis,
         String posterUrl,
         Short releaseYear,
         Double averageScore,
-        String status
+        String status,
+        List<String> genres,
+        List<String> tagNames
 ) {
 }

@@ -1,19 +1,26 @@
 package com.animap.backend.domain.anime;
 
+import com.animap.backend.domain.anilist.AnilistTagMapping;
+import com.animap.backend.domain.anilist.AnilistTagMappingRepository;
 import com.animap.backend.domain.anime.dto.AnimeDetailResponse;
+import com.animap.backend.domain.anime.dto.AnimeImportRequest;
+import com.animap.backend.domain.anime.dto.AnimeImportResponse;
 import com.animap.backend.domain.anime.dto.AnimeSearchResponse;
+import com.animap.backend.domain.anime.dto.AnimeTagResponse;
+import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
+import com.animap.backend.domain.anime.dto.ExternalTagListResponse;
+import com.animap.backend.domain.anime.external.AniListClient;
+import com.animap.backend.domain.tag.AnimeTag;
+import com.animap.backend.domain.tag.AnimeTagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
-import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
-import com.animap.backend.domain.anime.external.AniListClient;
-import com.animap.backend.domain.anime.dto.AnimeImportRequest;
-import com.animap.backend.domain.anime.dto.AnimeImportResponse;
+
 import java.math.BigDecimal;
-import com.animap.backend.domain.tag.AnimeTagRepository;
-import com.animap.backend.domain.anime.dto.AnimeTagResponse;
-import com.animap.backend.domain.anime.dto.ExternalTagListResponse;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +30,7 @@ public class AnimeService {
     private final AnimeRepository animeRepository;
     private final AniListClient aniListClient;
     private final AnimeTagRepository animeTagRepository;
+    private final AnilistTagMappingRepository anilistTagMappingRepository;
 
     public List<AnimeSearchResponse> searchAnime(String keyword) {
         return animeRepository
@@ -68,9 +76,9 @@ public class AnimeService {
                 ? BigDecimal.valueOf(externalAnime.averageScore())
                 : null;
 
-        String titleOriginal = externalAnime.titleOriginal() != null
-                ? externalAnime.titleOriginal()
-                : externalAnime.titleRomaji();
+        String titleOriginal = externalAnime.titleRomaji() != null
+                ? externalAnime.titleRomaji()
+                : externalAnime.titleEnglish();
 
         Anime anime = Anime.createFromAniList(
                 externalAnime.anilistId(),
@@ -85,6 +93,59 @@ public class AnimeService {
 
         Anime savedAnime = animeRepository.save(anime);
 
+        saveMappedAnimeTags(savedAnime, externalAnime);
+
         return AnimeImportResponse.saved(savedAnime);
+    }
+
+    private void saveMappedAnimeTags(
+            Anime anime,
+            ExternalAnimeSearchResponse externalAnime
+    ) {
+        List<String> anilistTagNames = collectAnilistTagNames(externalAnime);
+
+        if (anilistTagNames.isEmpty()) {
+            return;
+        }
+
+        List<AnilistTagMapping> mappings =
+                anilistTagMappingRepository.findAllByAnilistTagNameIn(anilistTagNames);
+
+        for (AnilistTagMapping mapping : mappings) {
+            boolean alreadyExists = animeTagRepository.existsByAnime_IdAndTag_Id(
+                    anime.getId(),
+                    mapping.getTag().getId()
+            );
+
+            if (alreadyExists) {
+                continue;
+            }
+
+            animeTagRepository.save(
+                    AnimeTag.create(
+                            anime,
+                            mapping.getTag(),
+                            calculateDefaultWeight()
+                    )
+            );
+        }
+    }
+
+    private List<String> collectAnilistTagNames(ExternalAnimeSearchResponse externalAnime) {
+        Set<String> tagNames = new LinkedHashSet<>();
+
+        if (externalAnime.genres() != null) {
+            tagNames.addAll(externalAnime.genres());
+        }
+
+        if (externalAnime.tagNames() != null) {
+            tagNames.addAll(externalAnime.tagNames());
+        }
+
+        return new ArrayList<>(tagNames);
+    }
+
+    private Byte calculateDefaultWeight() {
+        return (byte) 3;
     }
 }

@@ -23,7 +23,9 @@ public record AniListGraphQlResponse(
             CoverImage coverImage,
             Integer seasonYear,
             Double averageScore,
-            String status
+            String status,
+            List<String> genres,
+            List<MediaTag> tags
     ) {
     }
 
@@ -36,6 +38,15 @@ public record AniListGraphQlResponse(
 
     public record CoverImage(
             String large
+    ) {
+    }
+
+    public record MediaTag(
+            String name,
+            Integer rank,
+            Boolean isGeneralSpoiler,
+            Boolean isMediaSpoiler,
+            Boolean isAdult
     ) {
     }
 }
