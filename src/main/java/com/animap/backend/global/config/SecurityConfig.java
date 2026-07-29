@@ -41,6 +41,9 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers( // 애니 검색, 상세 조회는 로그인 안 해도 볼 수 있어야 함
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
                                 "/api/users/signup",
                                 "/api/users/login",
                                 "/api/anime/search",
