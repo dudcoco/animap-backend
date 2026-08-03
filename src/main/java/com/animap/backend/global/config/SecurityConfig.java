@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 
 @Configuration
 @RequiredArgsConstructor
@@ -41,23 +42,40 @@ public class SecurityConfig {
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .authorizeHttpRequests(auth -> auth
+
+                        // Spring 내부 오류 처리 요청 허용
+                        .dispatcherTypeMatchers(
+                                DispatcherType.ERROR,
+                                DispatcherType.FORWARD
+                        ).permitAll()
+
+                        // Swagger
                         .requestMatchers(
+                                "/error",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // 회원가입 및 로그인
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/users/signup",
                                 "/api/users/login"
                         ).permitAll()
 
-                        // 비로그인 허용: 조회성 API만
-                        .requestMatchers(HttpMethod.GET,
+                        // 비로그인 허용: 애니메이션 조회
+                        .requestMatchers(
+                                HttpMethod.GET,
                                 "/api/anime/search",
-                                "/api/anime/*",
                                 "/api/anime/search/external",
-                                "/api/anime/external/tags"
+                                "/api/anime/external/tags",
+                                "/api/anime/*"
                         ).permitAll()
 
-                        .requestMatchers(HttpMethod.POST,
+                        // 비로그인 허용: 결과를 저장하지 않는 AI 분석
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/ai/review-analysis"
                         ).permitAll()
 
@@ -70,16 +88,19 @@ public class SecurityConfig {
                                 "/api/ai/review-analysis/apply"
                         ).authenticated()
 
-                        // 로그인 필요: DB 변경 애니 관리 API
-                        .requestMatchers(HttpMethod.POST,
+                        // 로그인 필요: 애니메이션 DB 변경
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/anime/import",
                                 "/api/anime/*/tags"
                         ).authenticated()
 
-                        .requestMatchers(HttpMethod.DELETE,
+                        .requestMatchers(
+                                HttpMethod.DELETE,
                                 "/api/anime/*"
                         ).authenticated()
 
+                        // 공개 경로로 명시하지 않은 API는 기본적으로 로그인 필요
                         .anyRequest().authenticated()
                 )
                 // 기본 로그인 필터보다 먼저 JWT 필터를 실행
