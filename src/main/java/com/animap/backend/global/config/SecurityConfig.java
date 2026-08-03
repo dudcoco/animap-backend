@@ -5,6 +5,7 @@ import com.animap.backend.global.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -40,25 +41,46 @@ public class SecurityConfig {
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers( // 애니 검색, 상세 조회는 로그인 안 해도 볼 수 있어야 함
+                        .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api/users/signup",
-                                "/api/users/login",
+                                "/api/users/login"
+                        ).permitAll()
+
+                        // 비로그인 허용: 조회성 API만
+                        .requestMatchers(HttpMethod.GET,
                                 "/api/anime/search",
-                                "/api/anime/**",
-                                "/api/ai/**",
+                                "/api/anime/*",
+                                "/api/anime/search/external",
+                                "/api/anime/external/tags"
+                        ).permitAll()
+
+                        .requestMatchers(HttpMethod.POST,
                                 "/api/ai/review-analysis"
                         ).permitAll()
+
+                        // 로그인 필요: 사용자 개인 데이터
                         .requestMatchers(
                                 "/api/users/me",
                                 "/api/records/**",
                                 "/api/preferences/**",
                                 "/api/recommendations/**",
                                 "/api/ai/review-analysis/apply"
-                        ).authenticated() // 감상 기록은 반드시 로그인한 사용자에게 속해야 함
-                        .anyRequest().permitAll()
+                        ).authenticated()
+
+                        // 로그인 필요: DB 변경 애니 관리 API
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/anime/import",
+                                "/api/anime/*/tags"
+                        ).authenticated()
+
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/anime/*"
+                        ).authenticated()
+
+                        .anyRequest().authenticated()
                 )
                 // 기본 로그인 필터보다 먼저 JWT 필터를 실행
                 .addFilterBefore(
