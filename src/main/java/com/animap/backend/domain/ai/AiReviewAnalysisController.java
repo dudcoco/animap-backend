@@ -24,7 +24,7 @@ public class AiReviewAnalysisController {
     private final AiReviewAnalysisService aiReviewAnalysisService;
 
     @Operation(
-            summary = "감상평 AI 분석",
+            summary = "감상평 AI 분석 (테스트용으로 생성, 실사용 X)",
             description = """
                     입력한 감상평을 AI로 분석하여
                     긍정 태그, 부정 태그와 분석 요약을 반환한다.
