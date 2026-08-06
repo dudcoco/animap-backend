@@ -17,6 +17,9 @@ import com.animap.backend.domain.record.dto.RecordUpdateResponse;
 import com.animap.backend.domain.record.dto.RecordDeleteResponse;
 import com.animap.backend.domain.anime.dto.AnimeTagResponse;
 import com.animap.backend.domain.tag.AnimeTagRepository;
+import com.animap.backend.domain.analysis.RecordAnalysisTagRepository;
+
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ public class RecordService {
     private final UserRepository userRepository;
     private final AnimeRepository animeRepository;
     private final AnimeTagRepository animeTagRepository;
+    private final RecordAnalysisTagRepository recordAnalysisTagRepository;
 
     // 생성
     @Transactional
@@ -86,11 +90,18 @@ public class RecordService {
         UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
 
+        boolean reviewTextChanged = request.reviewText() != null
+                && !Objects.equals(record.getReviewText(), request.reviewText());
+
         record.update(
                 request.rating(),
                 request.preferenceType(),
                 request.reviewText()
         );
+
+        if (reviewTextChanged) {
+            recordAnalysisTagRepository.deleteAllByRecord_Id(recordId);
+        }
 
         return RecordUpdateResponse.of(record.getId());
     }
@@ -101,6 +112,8 @@ public class RecordService {
         UserAnimeRecord record = recordRepository.findByIdAndUserId(recordId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("감상 기록을 찾을 수 없습니다."));
 
+        recordAnalysisTagRepository.deleteAllByRecord_Id(recordId);
+        recordAnalysisTagRepository.flush();
         recordRepository.delete(record);
 
         return RecordDeleteResponse.of(recordId);

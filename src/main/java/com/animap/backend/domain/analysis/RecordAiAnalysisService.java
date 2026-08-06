@@ -4,19 +4,15 @@ import com.animap.backend.domain.ai.OpenAiClient;
 import com.animap.backend.domain.ai.dto.AnalyzedTagResponse;
 import com.animap.backend.domain.ai.dto.ReviewAnalysisResponse;
 import com.animap.backend.domain.analysis.dto.RecordAiAnalysisResponse;
-import com.animap.backend.domain.preference.UserPreferenceTag;
-import com.animap.backend.domain.preference.UserPreferenceTagRepository;
 import com.animap.backend.domain.record.UserAnimeRecord;
 import com.animap.backend.domain.record.UserAnimeRecordRepository;
 import com.animap.backend.domain.tag.Tag;
 import com.animap.backend.domain.tag.TagRepository;
 import com.animap.backend.domain.tag.TagType;
-import com.animap.backend.domain.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -28,7 +24,6 @@ public class RecordAiAnalysisService {
     private final UserAnimeRecordRepository recordRepository;
     private final TagRepository tagRepository;
     private final RecordAnalysisTagRepository recordAnalysisTagRepository;
-    private final UserPreferenceTagRepository userPreferenceTagRepository;
 
     @Transactional
     public RecordAiAnalysisResponse analyzeRecordAndApply(
@@ -42,42 +37,44 @@ public class RecordAiAnalysisService {
         // 2. ReviewText 확인 > 감상 이유가 비어있으면 AI가 분석할 문장이 없으니 불가
         validateReviewText(record);
 
-        // 3. 중복 분석 방지
-        if (recordAnalysisTagRepository.existsByRecord_Id(recordId)) {
-            throw new IllegalArgumentException("이미 AI 분석이 완료된 감상 기록입니다.");
-        }
-
-        // 4. AI 분석 실행
+        // 3. AI 분석 실행. 외부 호출이 실패하면 기존 분석 결과는 유지한다.
         List<Tag> availableTags = tagRepository.findAll();
 
         ReviewAnalysisResponse analysisResult =
                 openAiClient.analyzeReview(record.getReviewText(), availableTags);
 
-        User user = record.getUser();
+        // 4. 분석에 성공한 뒤 기존 결과를 지우고 새 결과로 교체한다.
+        recordAnalysisTagRepository.deleteAllByRecord_Id(recordId);
+        recordAnalysisTagRepository.flush();
 
-        // 5. 긍정 태그/부정 태그 나눠서 저장
+        // 5. 긍정 태그/부정 태그를 기록별 분석 테이블에 저장한다.
+        int reflectedTagCount = 0;
+
         for (AnalyzedTagResponse positiveTag : analysisResult.positiveTags()) {
-            reflectAnalysisResult(
-                    user,
+            if (reflectAnalysisResult(
                     record,
                     positiveTag,
                     AnalysisSentiment.POSITIVE
-            );
+            )) {
+                reflectedTagCount++;
+            }
         }
 
         for (AnalyzedTagResponse negativeTag : analysisResult.negativeTags()) {
-            reflectAnalysisResult(
-                    user,
+            if (reflectAnalysisResult(
                     record,
                     negativeTag,
                     AnalysisSentiment.NEGATIVE
-            );
+            )) {
+                reflectedTagCount++;
+            }
         }
 
         return RecordAiAnalysisResponse.of(
                 record.getId(),
                 analysisResult.positiveTags().size(),
                 analysisResult.negativeTags().size(),
+                reflectedTagCount,
                 analysisResult.summary()
         );
     }
@@ -88,8 +85,7 @@ public class RecordAiAnalysisService {
         }
     }
 
-    private void reflectAnalysisResult(
-            User user,
+    private boolean reflectAnalysisResult(
             UserAnimeRecord record,
             AnalyzedTagResponse analyzedTag,
             AnalysisSentiment sentiment
@@ -101,7 +97,7 @@ public class RecordAiAnalysisService {
                 .orElse(null);
 
         if (tag == null) {
-            return;
+            return false;
         }
 
         Byte confidence = convertConfidence(analyzedTag.confidence());
@@ -116,15 +112,7 @@ public class RecordAiAnalysisService {
         );
 
         recordAnalysisTagRepository.save(recordAnalysisTag);
-
-        // 8. user_preference_tags 반영: 긍정이면 + 부정이면 -
-        BigDecimal preferenceScore = BigDecimal.valueOf(confidence);
-
-        if (sentiment == AnalysisSentiment.NEGATIVE) {
-            preferenceScore = preferenceScore.negate();
-        }
-
-        saveOrUpdateUserPreferenceTag(user, tag, preferenceScore);
+        return true;
     }
 
     private TagType parseTagType(String category) {
@@ -143,17 +131,4 @@ public class RecordAiAnalysisService {
         return (byte) confidence;
     }
 
-    private void saveOrUpdateUserPreferenceTag(
-            User user,
-            Tag tag,
-            BigDecimal score
-    ) {
-        userPreferenceTagRepository.findByUserIdAndTagId(user.getId(), tag.getId())
-                .ifPresentOrElse(
-                        preferenceTag -> preferenceTag.addScore(score),
-                        () -> userPreferenceTagRepository.save(
-                                UserPreferenceTag.create(user, tag, score)
-                        )
-                );
-    }
 }

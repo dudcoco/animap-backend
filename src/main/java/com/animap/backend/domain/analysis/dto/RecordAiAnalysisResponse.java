@@ -24,7 +24,7 @@ public record RecordAiAnalysisResponse(
         int negativeTagCount,
 
         @Schema(
-                description = "사용자 선호 태그에 반영된 전체 태그 개수",
+                description = "감상 기록 분석 결과로 저장된 전체 태그 개수",
                 example = "4"
         )
         int reflectedTagCount,
@@ -45,15 +45,16 @@ public record RecordAiAnalysisResponse(
             Long recordId,
             int positiveTagCount,
             int negativeTagCount,
+            int reflectedTagCount,
             String summary
     ) {
         return new RecordAiAnalysisResponse(
                 recordId,
                 positiveTagCount,
                 negativeTagCount,
-                positiveTagCount + negativeTagCount,
+                reflectedTagCount,
                 summary,
-                "감상 기록의 AI 분석 결과가 사용자 선호 태그에 반영되었습니다."
+                "감상 기록의 AI 분석 결과가 저장되었습니다."
         );
     }
 }

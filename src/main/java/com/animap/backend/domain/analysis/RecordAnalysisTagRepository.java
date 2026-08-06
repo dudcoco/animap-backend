@@ -11,6 +11,8 @@ public interface RecordAnalysisTagRepository extends JpaRepository<RecordAnalysi
 
     List<RecordAnalysisTag> findAllByRecord_Id(Long recordId);
 
+    void deleteAllByRecord_Id(Long recordId);
+
     // RecordAnalysisTag의 record의 user의 id가 userId인 것들을 전부 찾아라
     List<RecordAnalysisTag> findAllByRecord_User_Id(Long userId);
 }
