@@ -9,6 +9,7 @@ import com.animap.backend.domain.anime.dto.AnimeSearchResponse;
 import com.animap.backend.domain.anime.dto.AnimeTagResponse;
 import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
 import com.animap.backend.domain.anime.dto.ExternalTagListResponse;
+import com.animap.backend.domain.anime.dto.AnimeBulkImportResponse;
 import com.animap.backend.domain.anime.external.AniListClient;
 import com.animap.backend.domain.tag.AnimeTag;
 import com.animap.backend.domain.tag.AnimeTagRepository;
@@ -69,9 +70,47 @@ public class AnimeService {
         return aniListClient.getExternalTags();
     }
 
+    @Transactional
+    public AnimeBulkImportResponse importPopularAnime(
+            int page,
+            int perPage
+    ) {
+        int normalizedPage = normalizePage(page);
+        int normalizedPerPage = normalizePerPage(perPage);
+
+        List<ExternalAnimeSearchResponse> externalAnimeList =
+                aniListClient.getPopularAnime(normalizedPage, normalizedPerPage);
+
+        int savedCount = 0;
+        int skippedCount = 0;
+
+        for (ExternalAnimeSearchResponse externalAnime : externalAnimeList) {
+            if (externalAnime.anilistId() == null
+                    || animeRepository.existsByAnilistId(externalAnime.anilistId())) {
+                skippedCount++;
+                continue;
+            }
+
+            saveAnimeFromExternalAnime(externalAnime);
+            savedCount++;
+        }
+
+        return AnimeBulkImportResponse.of(
+                externalAnimeList.size(),
+                savedCount,
+                skippedCount
+        );
+    }
+
     private AnimeImportResponse saveAnimeFromAniList(Integer anilistId) {
         ExternalAnimeSearchResponse externalAnime = aniListClient.getAnimeById(anilistId);
 
+        Anime savedAnime = saveAnimeFromExternalAnime(externalAnime);
+
+        return AnimeImportResponse.saved(savedAnime);
+    }
+
+    private Anime saveAnimeFromExternalAnime(ExternalAnimeSearchResponse externalAnime) {
         BigDecimal averageScore = externalAnime.averageScore() != null
                 ? BigDecimal.valueOf(externalAnime.averageScore())
                 : null;
@@ -95,7 +134,23 @@ public class AnimeService {
 
         saveMappedAnimeTags(savedAnime, externalAnime);
 
-        return AnimeImportResponse.saved(savedAnime);
+        return savedAnime;
+    }
+
+    private int normalizePage(int page) {
+        if (page < 1) {
+            return 1;
+        }
+
+        return page;
+    }
+
+    private int normalizePerPage(int perPage) {
+        if (perPage < 1) {
+            return 10;
+        }
+
+        return Math.min(perPage, 50);
     }
 
     private void saveMappedAnimeTags(

@@ -8,6 +8,7 @@ import java.util.List;
 import com.animap.backend.domain.anime.dto.ExternalAnimeSearchResponse;
 import com.animap.backend.domain.anime.dto.AnimeImportRequest;
 import com.animap.backend.domain.anime.dto.AnimeImportResponse;
+import com.animap.backend.domain.anime.dto.AnimeBulkImportResponse;
 import jakarta.validation.Valid;
 import com.animap.backend.domain.anime.dto.ExternalTagListResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -107,6 +108,26 @@ public class AnimeController {
     ) {
         AnimeDetailResponse response =
                 animeService.getAnimeDetail(animeId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "인기 애니메이션 일괄 가져오기",
+            description = """
+                AniList에서 인기 애니메이션 목록을 조회하고,
+                AniMap 데이터베이스에 없는 작품만 저장한다.
+                이미 저장된 작품은 건너뛴다.
+                """
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PostMapping("/import/popular")
+    public ResponseEntity<AnimeBulkImportResponse> importPopularAnime(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int perPage
+    ) {
+        AnimeBulkImportResponse response =
+                animeService.importPopularAnime(page, perPage);
 
         return ResponseEntity.ok(response);
     }

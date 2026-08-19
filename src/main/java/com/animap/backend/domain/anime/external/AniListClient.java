@@ -120,6 +120,85 @@ public class AniListClient {
         return parseExternalTags(responseBody);
     }
 
+    public List<ExternalAnimeSearchResponse> getPopularAnime(
+            int page,
+            int perPage
+    ) {
+        RestClient restClient = restClientBuilder.build();
+
+        AniListGraphQlRequest request = new AniListGraphQlRequest(
+                getPopularAnimeQuery(),
+                Map.of(
+                        "page", page,
+                        "perPage", perPage
+                )
+        );
+
+        AniListGraphQlResponse response = restClient.post()
+                .uri(ANILIST_API_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(AniListGraphQlResponse.class);
+
+        if (response == null || response.data() == null || response.data().Page() == null) {
+            return List.of();
+        }
+
+        return response.data().Page().media()
+                .stream()
+                .map(media -> new ExternalAnimeSearchResponse(
+                        media.id(),
+                        media.title().nativeTitle(),
+                        media.title().english(),
+                        media.title().romaji(),
+                        media.description(),
+                        media.coverImage() != null ? media.coverImage().large() : null,
+                        media.seasonYear() != null ? media.seasonYear().shortValue() : null,
+                        media.averageScore(),
+                        media.status(),
+                        media.genres() != null ? media.genres() : List.of(),
+                        extractTagNames(media.tags())
+                ))
+                .toList();
+    }
+
+    private String getPopularAnimeQuery() {
+        return """
+            query ($page: Int, $perPage: Int) {
+              Page(page: $page, perPage: $perPage) {
+                media(
+                  type: ANIME,
+                  sort: [POPULARITY_DESC, SCORE_DESC],
+                  isAdult: false
+                ) {
+                  id
+                  title {
+                    romaji
+                    english
+                    nativeTitle: native
+                  }
+                  description(asHtml: false)
+                  coverImage {
+                    large
+                  }
+                  seasonYear
+                  averageScore
+                  status
+                  genres
+                  tags {
+                    name
+                    rank
+                    isAdult
+                    isGeneralSpoiler
+                    isMediaSpoiler
+                  }
+                }
+              }
+            }
+            """;
+    }
+
     private ExternalTagListResponse parseExternalTags(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
