@@ -32,12 +32,8 @@ public class AnimeService {
     private final AnimeTagRepository animeTagRepository;
     private final AnilistTagMappingRepository anilistTagMappingRepository;
 
-    public List<AnimeSearchResponse> searchAnime(String keyword) {
-        return animeRepository
-                .findByTitleKoContainingOrTitleOriginalContaining(keyword, keyword)
-                .stream()
-                .map(AnimeSearchResponse::from)
-                .toList();
+    public List<ExternalAnimeSearchResponse> searchAnime(String keyword) {
+        return searchExternalAnime(keyword);
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +50,11 @@ public class AnimeService {
     }
 
     public List<ExternalAnimeSearchResponse> searchExternalAnime(String keyword) {
-        return aniListClient.searchAnime(keyword);
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+
+        return aniListClient.searchAnime(keyword.trim());
     }
 
     @Transactional

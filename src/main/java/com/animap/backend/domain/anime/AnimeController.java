@@ -1,7 +1,6 @@
 package com.animap.backend.domain.anime;
 
 import com.animap.backend.domain.anime.dto.AnimeDetailResponse;
-import com.animap.backend.domain.anime.dto.AnimeSearchResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,11 +27,11 @@ public class AnimeController {
     private final AnimeService animeService;
 
     @Operation(
-            summary = "저장된 애니메이션 검색",
-            description = "AniMap 데이터베이스에 저장된 애니메이션을 제목 키워드로 검색한다."
+            summary = "애니메이션 검색",
+            description = "AniList 외부 API에서 제목 키워드와 일치하는 애니메이션을 검색한다."
     )
     @GetMapping("/search")
-    public ResponseEntity<List<AnimeSearchResponse>> searchAnime(
+    public ResponseEntity<List<ExternalAnimeSearchResponse>> searchAnime(
 
             @Parameter(
                     description = "검색할 애니메이션 제목 키워드",
@@ -40,7 +39,7 @@ public class AnimeController {
             )
             @RequestParam String keyword
     ) {
-        List<AnimeSearchResponse> response =
+        List<ExternalAnimeSearchResponse> response =
                 animeService.searchAnime(keyword);
 
         return ResponseEntity.ok(response);
